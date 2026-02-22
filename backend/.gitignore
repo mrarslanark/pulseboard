@@ -13,3 +13,6 @@ dist/
 
 # Logs
 *.log
+
+# Prisma
+/src/generated/prisma

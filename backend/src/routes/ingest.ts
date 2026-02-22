@@ -1,7 +1,10 @@
 import { FastifyInstance } from "fastify";
+import { prisma } from "../lib/prisma";
+import { EventType } from "@prisma/client";
+import { request } from "node:http";
 
 interface IngestBody {
-  projectId: string;
+  apiKey: string;
   type: "error" | "event" | "metric";
   name: string;
   payload: Record<string, unknown>;
@@ -15,9 +18,9 @@ export default async function ingestRoutes(app: FastifyInstance) {
       schema: {
         body: {
           type: "object",
-          required: ["projectId", "type", "name", "payload"],
+          required: ["apiKey", "type", "name", "payload"],
           properties: {
-            projectId: { type: "string" },
+            apiKey: { type: "string" },
             type: { type: "string", enum: ["error", "event", "metric"] },
             name: { type: "string" },
             payload: { type: "object" },
@@ -27,19 +30,74 @@ export default async function ingestRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const body = request.body;
-      const event = {
-        ...body,
-        timestamp: body.timestamp ?? new Date().toISOString(),
-        receivedAt: new Date().toISOString(),
-      };
+      const { apiKey, type, name, payload, timestamp } = request.body;
 
-      request.log.info({ event }, "Event received");
+      const project = await prisma.project.findUnique({
+        where: { apiKey },
+      });
 
-      return reply.status(200).send({
+      if (!project) {
+        return reply.status(401).send({
+          success: false,
+          message: "Invalid API key",
+        });
+      }
+
+      const event = await prisma.event.create({
+        data: {
+          projectId: project.id,
+          type: type as EventType,
+          name,
+          payload,
+          timestamp: timestamp ? new Date(timestamp) : new Date(),
+        },
+      });
+
+      request.log.info({ eventId: event.id }, "Event persisted");
+
+      return reply.status(201).send({
         success: true,
         message: "Event ingested successfully",
         data: event,
+      });
+    },
+  );
+
+  app.get<{ Querystring: { apiKey: string } }>(
+    "/events",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          required: ["apiKey"],
+          properties: {
+            apiKey: { type: "string" },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { apiKey } = request.query;
+
+      const project = await prisma.project.findUnique({
+        where: { apiKey },
+        include: {
+          events: {
+            orderBy: { receivedAt: "desc" },
+            take: 20,
+          },
+        },
+      });
+
+      if (!project) {
+        return reply
+          .status(401)
+          .send({ success: false, message: "Invalid API key" });
+      }
+
+      return reply.send({
+        success: true,
+        data: project.events,
       });
     },
   );
