@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma";
 import bcrypt from "bcryptjs";
 import { authService } from "../lib/auth";
-import { RegisterOptions, LoginOptions } from "./schemas/auth";
+import { RegisterOptions, LoginOptions } from "./options/auth";
 
 interface RegisterBody {
   name: string;

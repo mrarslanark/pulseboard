@@ -1,7 +1,7 @@
 import { EventType } from "@prisma/client";
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma";
-import { GetEventsOptions, IngestOptions } from "./schemas/ingest";
+import { GetEventsOptions, IngestOptions } from "./options/ingest";
 
 interface IngestBody {
   apiKey: string;
