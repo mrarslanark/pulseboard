@@ -1,7 +1,7 @@
+import { EventType } from "@prisma/client";
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma";
-import { EventType } from "@prisma/client";
-import { request } from "node:http";
+import { GetEventsOptions, IngestOptions } from "./schemas/ingest";
 
 interface IngestBody {
   apiKey: string;
@@ -14,21 +14,7 @@ interface IngestBody {
 export default async function ingestRoutes(app: FastifyInstance) {
   app.post<{ Body: IngestBody }>(
     "/ingest",
-    {
-      schema: {
-        body: {
-          type: "object",
-          required: ["apiKey", "type", "name", "payload"],
-          properties: {
-            apiKey: { type: "string" },
-            type: { type: "string", enum: ["error", "event", "metric"] },
-            name: { type: "string" },
-            payload: { type: "object" },
-            timestamp: { type: "string" },
-          },
-        },
-      },
-    },
+    IngestOptions,
     async (request, reply) => {
       const { apiKey, type, name, payload, timestamp } = request.body;
 
@@ -65,17 +51,7 @@ export default async function ingestRoutes(app: FastifyInstance) {
 
   app.get<{ Querystring: { apiKey: string } }>(
     "/events",
-    {
-      schema: {
-        querystring: {
-          type: "object",
-          required: ["apiKey"],
-          properties: {
-            apiKey: { type: "string" },
-          },
-        },
-      },
-    },
+    GetEventsOptions,
     async (request, reply) => {
       const { apiKey } = request.query;
 
