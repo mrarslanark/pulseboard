@@ -42,13 +42,7 @@ export default async function authRoutes(app: FastifyInstance) {
       const accessToken = authService.generateAccessToken(user.id, user.email);
       const refreshToken = await authService.generateRefreshToken(user.id);
 
-      reply.setCookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "auth/refresh",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      });
+      reply.setCookie("refreshToken", refreshToken, authService.cookieOptions);
 
       return reply.status(201).send({
         success: true,
@@ -89,13 +83,7 @@ export default async function authRoutes(app: FastifyInstance) {
       const accessToken = authService.generateAccessToken(user.id, user.email);
       const refreshToken = await authService.generateRefreshToken(user.id);
 
-      reply.setCookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/auth/refresh",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      });
+      reply.setCookie("refreshToken", refreshToken, authService.cookieOptions);
 
       return reply.send({
         success: true,
@@ -120,13 +108,8 @@ export default async function authRoutes(app: FastifyInstance) {
     try {
       const { accessToken, refreshToken, user } =
         await authService.rotateRefreshToken(token);
-      reply.setCookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        path: "/auth/refresh",
-        maxAge: 60 * 60 * 24 * 7,
-      });
+
+      reply.setCookie("refreshToken", refreshToken, authService.cookieOptions);
 
       return reply.send({
         success: true,

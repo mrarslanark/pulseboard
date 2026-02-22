@@ -2,8 +2,17 @@ import { randomBytes } from "crypto";
 import jwt, { SignOptions } from "jsonwebtoken";
 import { prisma } from "./prisma";
 import { User } from "@prisma/client";
+import { CookieSerializeOptions } from "@fastify/cookie";
 
 class AuthService {
+  cookieOptions: CookieSerializeOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/auth/refresh",
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+  };
+
   generateAccessToken(userId: string, email: string): string {
     const options: SignOptions = {
       expiresIn: process.env.JWT_ACCESS_EXPIRES as SignOptions["expiresIn"],
