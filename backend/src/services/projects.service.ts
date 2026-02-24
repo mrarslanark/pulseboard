@@ -36,6 +36,17 @@ class ProjectsService {
 
     await prisma.project.delete({ where: { id } });
   }
+
+  async deleteAllEvents(id: string, userId: string): Promise<number> {
+    const project = await prisma.project.findFirst({ where: { id, userId } });
+    if (!project) throw new Error("PROJECT_NOT_FOUND");
+
+    const deleted = await prisma.event.deleteMany({
+      where: { projectId: id },
+    });
+
+    return deleted.count;
+  }
 }
 
 export const projectsService = new ProjectsService();

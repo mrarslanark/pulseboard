@@ -1,6 +1,7 @@
 import { FastifySchema } from "fastify";
 import { Type, Static } from "@sinclair/typebox";
 
+// Schemas
 const ProjectSchema = Type.Object({
   id: Type.String(),
   name: Type.String(),
@@ -26,6 +27,7 @@ const ErrorResponseSchema = Type.Object({
 export type CreateProjectBody = Static<typeof CreateProjectBodySchema>;
 export type ProjectParams = Static<typeof ProjectParamsSchema>;
 
+// Fastify Schemas
 export const CreateProjectSchema: FastifySchema = {
   body: CreateProjectBodySchema,
   response: {
@@ -55,6 +57,20 @@ export const DeleteProjectSchema: FastifySchema = {
   params: ProjectParamsSchema,
   response: {
     200: Type.Object({ success: Type.Boolean(), message: Type.String() }),
+    404: ErrorResponseSchema,
+  },
+};
+
+export const DeleteProjectEventsSchema: FastifySchema = {
+  params: ProjectParamsSchema,
+  response: {
+    200: Type.Object({
+      success: Type.Boolean(),
+      message: Type.String(),
+      data: Type.Object({
+        deletedCount: Type.Number(),
+      }),
+    }),
     404: ErrorResponseSchema,
   },
 };

@@ -47,6 +47,27 @@ class ProjectsController {
       throw err;
     }
   }
+
+  async removeAllEvents(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as ProjectParams;
+    const { id: userId } = request.user;
+
+    try {
+      const deletedCount = await projectsService.deleteAllEvents(id, userId);
+      return reply.send({
+        success: true,
+        message: "All events deleted",
+        data: { deletedCount },
+      });
+    } catch (err: any) {
+      if (err.message === "PROJECT_NOT_FOUND") {
+        return reply
+          .status(404)
+          .send({ success: false, message: "Project not found" });
+      }
+      throw err;
+    }
+  }
 }
 
 export const projectsController = new ProjectsController();

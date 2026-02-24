@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { projectsController } from "../controllers/projects.controller";
 import {
   CreateProjectSchema,
+  DeleteProjectEventsSchema,
   DeleteProjectSchema,
   GetProjectSchema,
   ListProjectsSchema,
@@ -34,5 +35,12 @@ export default async function projectRoutes(app: FastifyInstance) {
     "/projects/:id",
     { schema: DeleteProjectSchema, onRequest: [app.authenticate] },
     projectsController.remove.bind(projectsController),
+  );
+
+  // Delete all events related to a project
+  app.delete(
+    "/projects/:id/events",
+    { schema: DeleteProjectEventsSchema, onRequest: [app.authenticate] },
+    projectsController.removeAllEvents.bind(projectsController),
   );
 }
