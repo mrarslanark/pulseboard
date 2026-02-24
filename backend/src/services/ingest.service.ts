@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma";
-import { Event, EventType } from "@prisma/client";
+import { Event, EventType, Prisma } from "@prisma/client";
+import { getProjectChannel, publisher } from "../lib/redis";
 
 export type IngestPayload = {
   apiKey: string;
@@ -17,15 +18,21 @@ class IngestService {
 
     if (!project) throw new Error("INVALID_API_KEY");
 
-    return prisma.event.create({
+    const event = await prisma.event.create({
       data: {
         projectId: project.id,
         type: data.type,
         name: data.name,
-        payload: data.payload,
+        payload: data.payload as Prisma.InputJsonValue,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
       },
     });
+
+    // Publish to Redis after persisting - fire and forget
+    const channel = getProjectChannel(project.id);
+    await publisher.publish(channel, JSON.stringify(event));
+
+    return event;
   }
 
   async getEventsByApiKey(apiKey: string): Promise<Event[]> {

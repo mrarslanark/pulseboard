@@ -1,5 +1,6 @@
 import fastifyCookie from "@fastify/cookie";
 import fastifyJwt from "@fastify/jwt";
+import fastifyWebsocket from "@fastify/websocket";
 import Fastify, { FastifyReply, FastifyRequest } from "fastify";
 
 const app = Fastify({
@@ -15,6 +16,9 @@ const app = Fastify({
 
 // Cookies
 app.register(fastifyCookie);
+
+// Socket connection
+app.register(fastifyWebsocket);
 
 // JWT
 app.register(fastifyJwt, {
