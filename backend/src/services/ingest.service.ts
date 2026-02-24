@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma";
 import { Event, EventType, Prisma } from "@prisma/client";
 import { getProjectChannel, publisher } from "../lib/redis";
+import { alertQueue } from "../lib/queues";
 
 export type IngestPayload = {
   apiKey: string;
@@ -31,6 +32,20 @@ class IngestService {
     // Publish to Redis after persisting - fire and forget
     const channel = getProjectChannel(project.id);
     await publisher.publish(channel, JSON.stringify(event));
+
+    if (data.type === "error") {
+      await alertQueue.add(
+        "check-alert",
+        { projectId: project.id },
+        {
+          jobId: `alert:${project.id}`,
+          removeOnComplete: true,
+          removeOnFail: false,
+          attempts: 3,
+          backoff: { type: "exponential", delay: 1000 },
+        },
+      );
+    }
 
     return event;
   }
