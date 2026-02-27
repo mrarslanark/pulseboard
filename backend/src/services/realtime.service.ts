@@ -20,17 +20,28 @@ class RealtimeService {
     const channel = getProjectChannel(projectId);
     await subscriber.subscribe(channel);
 
-    subscriber.on("message", (receivedChannel, message) => {
+    // name the handler so we can remove it on unsubscribe
+    const handler = (receivedChannel: string, message: string) => {
       if (receivedChannel === channel) {
         onEvent(message);
       }
-    });
+    };
+
+    (subscriber as any)[`handler:${projectId}`] = handler;
+    subscriber.on("message", handler);
   }
 
   // Unsubscribe from a project's event channel
   async unsubscribe(projectId: string): Promise<void> {
     const channel = getProjectChannel(projectId);
     await subscriber.unsubscribe(channel);
+
+    // Remove the specific listener to prevent memory leaks
+    const handler = (subscriber as any)[`handler:${projectId}`];
+    if (handler) {
+      subscriber.removeListener("message", handler);
+      delete (subscriber as any)[`handler:${projectId}`];
+    }
   }
 }
 

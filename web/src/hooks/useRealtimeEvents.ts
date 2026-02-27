@@ -13,8 +13,8 @@ export function useRealtimeEvents(projectId: string, maxEvents = 50) {
     const token = tokenUtils.get();
     if (!token) return;
 
-    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/realtime/${projectId}`;
-    const ws = new WebSocket(wsUrl, ["Bearer", token]);
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/realtime/${projectId}?token={${token}}`;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => setConnected(true);

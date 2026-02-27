@@ -8,7 +8,7 @@ export default async function realtimeRoutes(app: FastifyInstance) {
     "/realtime/:projectId",
     {
       schema: RealtimeSchema,
-      onRequest: [app.authenticate],
+      onRequest: [app.authenticateWs],
       websocket: true,
     },
     (socket, request) => realtimeController.websocket(socket, request),

@@ -47,4 +47,28 @@ app.decorate(
   },
 );
 
+// WebSocket authentication - reads token from query param
+app.decorate(
+  "authenticateWs",
+  async function (request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const token = (request.query as any).token;
+
+      if (!token) {
+        reply.status(401).send({ success: false, message: "Unauthorized" });
+        return;
+      }
+
+      // Manually verify the token and set request.user
+      const decoded = (await app.jwt.verify(token)) as {
+        id: string;
+        email: string;
+      };
+      request.user = decoded;
+    } catch {
+      reply.status(401).send({ success: false, message: "Unauthorized" });
+    }
+  },
+);
+
 export default app;
