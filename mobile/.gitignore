@@ -1,1 +1,22 @@
-/node_modules
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.local
+
+# Test files
+test.ts
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript cache
+*.tsbuildinfo
