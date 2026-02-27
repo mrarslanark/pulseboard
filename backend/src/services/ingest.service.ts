@@ -38,7 +38,7 @@ class IngestService {
         "check-alert",
         { projectId: project.id },
         {
-          jobId: `alert:${project.id}`,
+          jobId: `alert-${project.id}`,
           removeOnComplete: true,
           removeOnFail: false,
           attempts: 3,

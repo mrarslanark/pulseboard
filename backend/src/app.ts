@@ -1,4 +1,5 @@
 import fastifyCookie from "@fastify/cookie";
+import fastifyCors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
 import fastifyWebsocket from "@fastify/websocket";
 import Fastify, { FastifyReply, FastifyRequest } from "fastify";
@@ -12,6 +13,12 @@ const app = Fastify({
       },
     },
   },
+});
+
+app.register(fastifyCors, {
+  origin: process.env.CORS_ORIGIN || "http://localhost:3001",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 });
 
 // Cookies
