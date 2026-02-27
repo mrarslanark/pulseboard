@@ -191,4 +191,5 @@ Event types: `error` | `event` | `metric`
 
 ## License
 
-MIT
+This project is licenced under AGPL v3.
+For commercial use or enterprise self-hosting, contact arslanark@gmail.com
