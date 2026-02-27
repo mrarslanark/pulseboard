@@ -33,5 +33,10 @@
     "url": "https://arslanmushtaq.com"
   },
   "license": "MIT",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^25.3.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
 }
