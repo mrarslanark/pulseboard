@@ -1,6 +1,6 @@
 export type EventType = "error" | "event" | "metric";
 
-export type Platform = "ios" | "android" | "browser" | "node" | "unknown";
+export type Platform = "ios" | "android" | "unknown";
 
 export type NetworkType = "wifi" | "cellular" | "offline" | "unknown";
 
@@ -19,22 +19,28 @@ export type UserContext = {
 export type DeviceContext = {
   platform: Platform;
   os: string;
-  osVersion: string;
+  osVersion: string | number;
   model: string;
   manufacturer: string;
+  brand: string;
+  isTablet: boolean;
+  appVersion: string;
+  buildNumber: string;
+  bundleId: string;
   screenWidth: number;
   screenHeight: number;
-  deviceMemory: string;
+  fontScale: number;
+  isEmulator: boolean;
   language: string;
-  locale: string;
   timezone: string;
 };
 
 export type NetworkContext = {
   type: NetworkType;
-  effectiveType: string;
+  isConnected: boolean;
+  isWifiEnabled: boolean;
   carrier: string;
-  downlink: string;
+  ipAddress: string;
 };
 
 export type SessionContext = {
