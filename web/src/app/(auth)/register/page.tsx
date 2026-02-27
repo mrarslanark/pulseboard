@@ -93,7 +93,7 @@ export default function RegisterPage() {
             </div>
           </CardContent>
 
-          <CardFooter className="flex flex-col gap-4">
+          <CardFooter className="flex flex-col gap-4 mt-6">
             <Button
               type="submit"
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-semibold"
