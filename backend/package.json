@@ -10,7 +10,6 @@
     "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
-  "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
@@ -40,5 +39,10 @@
     "prisma": "^6.19.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "author": {
+    "email": "m.arslanmushtaqahmed@gmail.com",
+    "name": "Arslan Mushtaq",
+    "url": "https://arslanmushtaq.com"
   }
 }
