@@ -1,8 +1,8 @@
 {
-  "name": "@pulseboard/sdk",
+  "name": "@pulseboard/react-native",
   "version": "0.1.0",
-  "description": "real-time event tracking and error monitoring SDK for Pulseboard",
-  "main": "/dist/index.cjs",
+  "description": "Official PulseBoard SDK for React Native",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -20,23 +20,31 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.73"
+  },
+  "dependencies": {
+    "react-native-device-info": "^10.0.0",
+    "@react-native-community/netinfo": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "*",
+    "@types/react-native": "*",
+    "typescript": "*",
+    "tsup": "*"
+  },
   "keywords": [
+    "react-native",
     "monitoring",
     "observability",
     "error-tracking",
-    "mobile",
     "pulseboard"
   ],
+  "license": "MIT",
   "author": {
     "email": "m.arslanmushtaqahmed@gmail.com",
     "name": "Arslan Mushtaq",
     "url": "https://arslanmushtaq.com"
-  },
-  "license": "MIT",
-  "type": "commonjs",
-  "devDependencies": {
-    "@types/node": "^25.3.2",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
   }
 }
