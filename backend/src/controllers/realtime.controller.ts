@@ -1,45 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { RealtimeParams } from "../schemas/realtime";
 import { realtimeService } from "../services/realtime.service";
-import { WebSocket } from "@fastify/websocket";
 
 class RealtimeController {
-  // WebSocket handler - live event stream
-  async websocket(socket: WebSocket, request: FastifyRequest) {
-    const { projectId } = request.params as RealtimeParams;
-    const { id: userId } = request.user;
-
-    const hasAccess = await realtimeService.validateProjectAccess(
-      projectId,
-      userId,
-    );
-
-    if (!hasAccess) {
-      socket.send(JSON.stringify({ error: "Unauthorized" }));
-      socket.close();
-      return;
-    }
-
-    // Send a connected confirmation
-    socket.send(JSON.stringify({ type: "connected", projectId }));
-
-    // Start streaming events
-    await realtimeService.subscribe(projectId, (data) => {
-      if (socket.readyState === socket.OPEN) {
-        socket.send(data);
-      }
-    });
-
-    // Cleanup on disconnect
-    socket.on("close", async () => {
-      await realtimeService.unsubscribe(projectId);
-    });
-
-    socket.on("error", async () => {
-      await realtimeService.unsubscribe(projectId);
-    });
-  }
-
   // SSE handler - fallback for environments where WebSocket is blocked
   async sse(request: FastifyRequest, reply: FastifyReply) {
     const { projectId } = request.params as RealtimeParams;

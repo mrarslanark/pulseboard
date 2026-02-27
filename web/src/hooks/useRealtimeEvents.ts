@@ -1,39 +1,58 @@
-import { tokenUtils } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
 import { PulseEvent } from "@/types";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export function useRealtimeEvents(projectId: string, maxEvents = 50) {
   const [events, setEvents] = useState<PulseEvent[]>([]);
   const [connected, setConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
 
-    const token = tokenUtils.get();
-    if (!token) return;
+    const socket = getSocket();
 
-    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/realtime/${projectId}?token={${token}}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    // Connect if not already connected
+    if (!socket.connected) {
+      socket.connect();
+    }
 
-    ws.onopen = () => setConnected(true);
+    socket.on("connect", () => {
+      setConnected(true);
+      // Subscribe to this project's event stream
+      socket.emit("subscribe", projectId);
+    });
 
-    ws.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+    socket.on("subscribed", ({ projectId: pid }) => {
+      console.log(`[Socket.IO] Subscribed to project: ${pid}`);
+    });
 
-      if (data.type === "connected") return;
+    socket.on("event", (data: PulseEvent) => {
+      setEvents((prev) => [data, ...prev].slice(0, maxEvents));
+    });
 
-      setEvents((prev) => {
-        const updated = [data as PulseEvent, ...prev];
-        return updated.slice(0, maxEvents);
-      });
+    socket.on("disconnect", () => {
+      setConnected(false);
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("[Socket.IO] Connection error:", err.message);
+      setConnected(false);
+    });
+
+    // If already connected, subscribe immediately
+    // if (socket.connected) {
+    //   setConnected(true);
+    //   socket.emit("subscribe", projectId);
+    // }
+
+    return () => {
+      socket.emit("unsubscribe", projectId);
+      socket.off("connect");
+      socket.off("subscribed");
+      socket.off("event");
+      socket.off("disconnect");
+      socket.off("connect_error");
     };
-
-    ws.onclose = () => setConnected(false);
-    ws.onerror = () => setConnected(false);
-
-    return () => ws.close();
   }, [projectId, maxEvents]);
 
   const clearEvents = () => setEvents([]);

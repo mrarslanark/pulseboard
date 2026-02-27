@@ -1,7 +1,6 @@
 import fastifyCookie from "@fastify/cookie";
 import fastifyCors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
-import fastifyWebsocket from "@fastify/websocket";
 import Fastify, { FastifyReply, FastifyRequest } from "fastify";
 
 const app = Fastify({
@@ -24,9 +23,6 @@ app.register(fastifyCors, {
 // Cookies
 app.register(fastifyCookie);
 
-// Socket connection
-app.register(fastifyWebsocket);
-
 // JWT
 app.register(fastifyJwt, {
   secret: process.env.JWT_ACCESS_SECRET as string,
@@ -42,30 +38,6 @@ app.decorate(
     try {
       await request.jwtVerify();
     } catch (err) {
-      reply.status(401).send({ success: false, message: "Unauthorized" });
-    }
-  },
-);
-
-// WebSocket authentication - reads token from query param
-app.decorate(
-  "authenticateWs",
-  async function (request: FastifyRequest, reply: FastifyReply) {
-    try {
-      const token = (request.query as any).token;
-
-      if (!token) {
-        reply.status(401).send({ success: false, message: "Unauthorized" });
-        return;
-      }
-
-      // Manually verify the token and set request.user
-      const decoded = (await app.jwt.verify(token)) as {
-        id: string;
-        email: string;
-      };
-      request.user = decoded;
-    } catch {
       reply.status(401).send({ success: false, message: "Unauthorized" });
     }
   },
