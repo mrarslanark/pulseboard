@@ -7,6 +7,8 @@ type ErrorHandler = (
 export class AutoCapture {
   private handler: ErrorHandler;
   private attached: boolean = false;
+  private previousHandler: ((error: Error, isFatal?: boolean) => void) | null =
+    null;
 
   constructor(handler: ErrorHandler) {
     this.handler = handler;
@@ -15,55 +17,40 @@ export class AutoCapture {
   attach(): void {
     if (this.attached) return;
 
-    // Node.js / React Native
-    if (typeof process !== "undefined") {
-      process.on("uncaughtException", (error: Error) => {
-        this.handler("uncaughtException", error, {
-          fatal: true,
-        });
-      });
+    // React Native's global error handler - catches all unhandled JS errors
+    this.previousHandler = ErrorUtils.getGlobalHandler();
 
-      process.on("unhandledRejection", (reason: unknown) => {
-        const error =
-          reason instanceof Error ? reason : new Error(String(reason));
+    ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+      this.handler("uncaughtException", error, { isFatal: isFatal ?? false });
 
-        this.handler("unhandledRejection", error, {
-          fatal: false,
-        });
-      });
-    }
+      // Always call the previous handler (React Native's default crash reporter)
+      if (this.previousHandler) {
+        this.previousHandler(error, isFatal);
+      }
+    });
 
-    // Browser
-    if (typeof window !== "undefined") {
-      window.addEventListener("error", (event: ErrorEvent) => {
-        this.handler("uncaughtError", event.error ?? new Error(event.message), {
-          filename: event.filename,
-          lineno: event.lineno,
-          colno: event.colno,
-        });
-      });
-
-      window.addEventListener(
-        "unhandledrejection",
-        (event: PromiseRejectionEvent) => {
-          const error =
-            event.reason instanceof Error
-              ? event.reason
-              : new Error(String(event.reason));
-
-          this.handler("unhandledrejection", error, {
-            fatal: false,
-          });
-        },
-      );
-    }
+    // Unhandled promise rejections
+    const tracking = require("promise/setimmediate/rejection-tracking");
+    tracking.enable({
+      allRejections: true,
+      onUnhandled: (_id: number, error: unknown) => {
+        const err = error instanceof Error ? error : new Error(String(error));
+        this.handler("unhandledRejection", err, { fatal: false });
+      },
+    });
 
     this.attached = true;
   }
 
   detach(): void {
-    // Reset flag — listeners can't be removed without references
-    // so call this only when tearing down completely
+    if (!this.attached) return;
+
+    // Restore the previous error handler
+    if (this.previousHandler) {
+      ErrorUtils.setGlobalHandler(this.previousHandler);
+      this.previousHandler = null;
+    }
+
     this.attached = false;
   }
 }

@@ -1,22 +1,23 @@
-import { AutoCapture } from "./auto-capture";
-import { PulseBoardClient } from "./client";
-import { EventQueue } from "./queue";
 import {
-  CaptureErrorOptions,
-  PulseEvent,
   SDKConfig,
   TrackOptions,
+  CaptureErrorOptions,
+  PulseEvent,
+  UserContext,
 } from "./types";
+import { PulseBoardClient } from "./client";
+import { EventQueue } from "./queue";
+import { AutoCapture } from "./auto-capture";
+import { ContextCollector } from "./context";
 
 class PulseBoardSDK {
   private config: SDKConfig | null = null;
   private client: PulseBoardClient | null = null;
   private queue: EventQueue | null = null;
   private autoCapture: AutoCapture | null = null;
+  private contextCollector: ContextCollector | null = null;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private initialized: boolean = false;
-
-  // ─── Public API ───────────────────────────────────────────────────
 
   init(config: SDKConfig): void {
     if (this.initialized) {
@@ -27,21 +28,20 @@ class PulseBoardSDK {
     this.config = {
       autoCapture: true,
       debug: false,
-      flushInterval: 5_000,
+      flushInterval: 5000,
       maxQueueSize: 100,
       ...config,
     };
 
     this.client = new PulseBoardClient(this.config.host, this.config.debug);
     this.queue = new EventQueue(this.config.maxQueueSize);
+    this.contextCollector = new ContextCollector(this.config.app ?? {});
 
-    // Start the flush interval
     this.flushTimer = setInterval(
       () => this.flush(),
       this.config.flushInterval,
     );
 
-    // Attach global error capture if enabled
     if (this.config.autoCapture) {
       this.autoCapture = new AutoCapture((name, error, context) => {
         this.captureError(error, { payload: context });
@@ -53,56 +53,52 @@ class PulseBoardSDK {
     this.log(`Initialized — host: ${this.config.host}`);
   }
 
+  identify(user: UserContext): void {
+    this.assertInitialized("identify");
+    this.contextCollector!.identify(user);
+    this.log(`User identified: ${JSON.stringify(user)}`);
+  }
+
+  clearUser(): void {
+    this.assertInitialized("clearUser");
+    this.contextCollector!.clearUser();
+  }
+
   track(name: string, options: TrackOptions = {}): void {
     this.assertInitialized("track");
-
-    const event: PulseEvent = {
-      apiKey: this.config!.apiKey,
-      type: "event",
+    this.buildAndEnqueue(
+      "event",
       name,
-      payload: options.payload ?? {},
-      timestamp: options.timestamp ?? new Date().toISOString(),
-    };
+      options.payload ?? {},
+      options.timestamp,
+    );
   }
 
   metric(name: string, value: number, options: TrackOptions = {}): void {
     this.assertInitialized("metric");
-
-    const event: PulseEvent = {
-      apiKey: this.config!.apiKey,
-      type: "metric",
+    this.buildAndEnqueue(
+      "metric",
       name,
-      payload: { value, ...options.payload },
-      timestamp: options.timestamp ?? new Date().toISOString(),
-    };
-
-    this.enqueue(event);
+      { value, ...options.payload },
+      options.timestamp,
+    );
   }
 
   captureError(error: Error, options: CaptureErrorOptions = {}): void {
     this.assertInitialized("captureError");
-
-    const event: PulseEvent = {
-      apiKey: this.config!.apiKey,
-      type: "error",
-      name: error.name ?? "Unknown Error",
-      payload: {
-        message: error.message,
-        stack: error.stack,
-        ...options.payload,
-      },
-      timestamp: new Date().toISOString(),
-    };
-
-    this.enqueue(event);
+    this.buildAndEnqueue("error", error.name ?? "UnknownError", {
+      message: error.message,
+      stack: error.stack,
+      ...options.payload,
+    });
   }
 
   async flush(): Promise<void> {
     if (!this.queue || this.queue.isEmpty) return;
     if (!this.client) return;
 
-    const events = this.queue.dequeue(10); // flush up to 10 at a time
-    this.log(`Flushing ${events.length} events(s)`);
+    const events = this.queue.dequeue(10);
+    this.log(`Flushing ${events.length} event(s)`);
     await this.client.sendBatch(events);
   }
 
@@ -119,19 +115,47 @@ class PulseBoardSDK {
     this.config = null;
     this.client = null;
     this.queue = null;
+    this.contextCollector = null;
 
     this.log("SDK destroyed");
   }
 
-  // ─── Private helpers ──────────────────────────────────────────────
+  // ─── Private ──────────────────────────────────────────────────────
 
-  private enqueue(event: PulseEvent): void {
-    this.queue!.enqueue(event);
-    this.log(`Queued: ${event.type} — ${event.name}`);
+  private buildAndEnqueue(
+    type: "event" | "metric" | "error",
+    name: string,
+    payload: Record<string, unknown>,
+    timestamp?: string,
+  ): void {
+    // Collect context async then enqueue — don't block the caller
+    this.contextCollector!.collect()
+      .then((context) => {
+        const event: PulseEvent = {
+          apiKey: this.config!.apiKey,
+          type,
+          name,
+          payload,
+          timestamp: timestamp ?? new Date().toISOString(),
+          context,
+        };
 
-    // Immediately flush errors - don't wait for the interval
-    if (event.type === "error") {
-      this.flush();
+        this.queue!.enqueue(event);
+        this.log(`Queued: ${type} — ${name}`);
+
+        // Flush errors immediately
+        if (type === "error") {
+          this.flush();
+        }
+      })
+      .catch((err) => {
+        this.log(`Failed to collect context: ${err}`);
+      });
+  }
+
+  private assertInitialized(method: string): void {
+    if (!this.initialized) {
+      throw new Error(`PulseBoard.${method}() called before PulseBoard.init()`);
     }
   }
 
@@ -140,22 +164,20 @@ class PulseBoardSDK {
       console.log(`[PulseBoard] ${message}`);
     }
   }
-
-  private assertInitialized(method: string): void {
-    if (!this.initialized) {
-      throw new Error(`PulseBoard.${method}() called before PulseBoard.init()`);
-    }
-  }
 }
 
-// Export a singleton - same pattern as Sentry, Mixpanel, etc.
 export const PulseBoard = new PulseBoardSDK();
 
-// Named exports for types
 export type {
   SDKConfig,
   TrackOptions,
   CaptureErrorOptions,
   PulseEvent,
   EventType,
+  UserContext,
+  AppContext,
+  DeviceContext,
+  NetworkContext,
+  SessionContext,
+  EnrichedContext,
 } from "./types";
