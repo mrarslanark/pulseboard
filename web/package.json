@@ -46,5 +46,8 @@
     "email": "m.arslanmushtaqahmed@gmail.com",
     "name": "Arslan Mushtaq",
     "url": "https://arslanmushtaq.com"
+  },
+  "overrides": {
+    "minimatch": "^10.2.1"
   }
 }
