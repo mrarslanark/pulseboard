@@ -28,7 +28,9 @@ export function useCreateProject() {
 
   return useMutation({
     mutationFn: async (name: string) => {
-      const { data } = api.post<ApiResponse<Project>>("/projects", { name });
+      const { data } = await api.post<ApiResponse<Project>>("/projects", {
+        name,
+      });
       return data.data;
     },
     onSuccess: () => {

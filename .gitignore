@@ -1,0 +1,12 @@
+# Environment variables — never commit real env files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# But DO commit example files — they contain no real secrets
+!.env.example
+!.env.local.example
+!**/.env.example
+!**/.env.local.example
