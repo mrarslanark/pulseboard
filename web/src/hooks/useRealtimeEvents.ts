@@ -1,4 +1,4 @@
-import { getSocket } from "@/lib/socket";
+import { socketManager } from "@/lib/SocketManager";
 import { PulseEvent } from "@/types";
 import { useEffect, useState } from "react";
 
@@ -9,49 +9,49 @@ export function useRealtimeEvents(projectId: string, maxEvents = 50) {
   useEffect(() => {
     if (!projectId) return;
 
-    const socket = getSocket();
+    socketManager.connect();
 
-    // Connect if not already connected
-    if (!socket.connected) {
-      socket.connect();
+    const onConnect = () => {
+      setConnected(true);
+      socketManager.subscribeToProject(projectId);
+    };
+
+    const onSubscribed = ({ projectId: pid }: { projectId: string }) => {
+      console.log(`[SocketManager] Subscribed to project: ${pid}`);
+    };
+
+    const onEvent = (data: PulseEvent) => {
+      setEvents((prev) => [data, ...prev].slice(0, maxEvents));
+    };
+
+    const onDisconnect = () => setConnected(false);
+
+    const onConnectError = (err: Error) => {
+      console.error("[SocketManager] Connection error:", err.message);
+      setConnected(false);
+    };
+
+    socketManager.on("connect", onConnect);
+    socketManager.on("subscribed", onSubscribed);
+    socketManager.on("event", onEvent);
+    socketManager.on("disconnect", onDisconnect);
+    socketManager.on("connect_error", onConnectError);
+
+    if (socketManager.isConnected) {
+      setTimeout(() => {
+        setConnected(true);
+        socketManager.subscribeToProject(projectId);
+      }, 0);
     }
 
-    socket.on("connect", () => {
-      setConnected(true);
-      // Subscribe to this project's event stream
-      socket.emit("subscribe", projectId);
-    });
-
-    socket.on("subscribed", ({ projectId: pid }) => {
-      console.log(`[Socket.IO] Subscribed to project: ${pid}`);
-    });
-
-    socket.on("event", (data: PulseEvent) => {
-      setEvents((prev) => [data, ...prev].slice(0, maxEvents));
-    });
-
-    socket.on("disconnect", () => {
-      setConnected(false);
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("[Socket.IO] Connection error:", err.message);
-      setConnected(false);
-    });
-
-    // If already connected, subscribe immediately
-    // if (socket.connected) {
-    //   setConnected(true);
-    //   socket.emit("subscribe", projectId);
-    // }
-
     return () => {
-      socket.emit("unsubscribe", projectId);
-      socket.off("connect");
-      socket.off("subscribed");
-      socket.off("event");
-      socket.off("disconnect");
-      socket.off("connect_error");
+      socketManager.unsubscribeFromProject(projectId);
+      socketManager.off("connect", onConnect);
+      socketManager.off("subscribed", onSubscribed);
+      socketManager.off("event", onEvent);
+      socketManager.off("disconnect", onDisconnect);
+      socketManager.off("connect_error", onConnectError);
+      socketManager.disconnect();
     };
   }, [projectId, maxEvents]);
 

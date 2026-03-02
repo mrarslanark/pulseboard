@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { disconnectSocket } from "@/lib/socket";
+import { socketManager } from "@/lib/SocketManager";
 import { useAuthStore } from "@/store/auth.store";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -13,12 +13,12 @@ export function useLogout() {
       await api.post("/auth/logout");
     },
     onSuccess: () => {
-      disconnectSocket();
+      socketManager.disconnect();
       clearAuth();
       router.replace("/login");
     },
     onError: () => {
-      disconnectSocket();
+      socketManager.disconnect();
       clearAuth();
       router.replace("/login");
     },
