@@ -3,8 +3,16 @@ import Cookies from "js-cookie";
 
 const TOKEN_KEY = "pb_access_token";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+if (!API_URL) {
+  throw new Error(
+    "NEXT_PUBLIC_API_URL is not defined. " +
+      "Make sure it is set in your environment variables and the app was rebuilt.",
+  );
+}
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: API_URL,
   withCredentials: true,
 });
 
