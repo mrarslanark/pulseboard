@@ -1,0 +1,12 @@
+{
+  "name": "pulseboard",
+  "private": true,
+  "scripts": {
+    "infra:up": "docker-compose -f docker-compose.dev.yml up -d",
+    "infra:down": "docker-compose -f docker-compose.dev.yml down",
+    "infra:logs": "docker-compose -f docker-compose.dev.yml logs -f",
+    "infra:reset": "docker-compose -f docker-compose.dev.yml down -v && docker-compose -f docker-compose.dev.yml up -d",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:web": "cd web && npm run dev"
+  }
+}
