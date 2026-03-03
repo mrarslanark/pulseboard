@@ -6,8 +6,8 @@ import Darwin
 class PulseBoardDevice: NSObject {
 
   @objc func getDeviceInfo(
-    _ resolve: @escaping RCTPromiseResolveBlock,
-    rejecter reject: @escaping RCTPromiseRejectBlock
+    _ resolve: @escaping (Any?) -> Void,
+    rejecter reject: @escaping (String?, String?, Error?) -> Void
   ) {
     DispatchQueue.main.async {
       let device      = UIDevice.current
@@ -42,11 +42,10 @@ class PulseBoardDevice: NSObject {
     var systemInfo = utsname()
     uname(&systemInfo)
     let machineMirror = Mirror(reflecting: systemInfo.machine)
-    let identifier = machineMirror.children.reduce("") { identifier, element in
+    return machineMirror.children.reduce("") { identifier, element in
       guard let value = element.value as? Int8, value != 0 else { return identifier }
       return identifier + String(UnicodeScalar(UInt8(value)))
     }
-    return identifier
   }
 
   private func isSimulator() -> Bool {

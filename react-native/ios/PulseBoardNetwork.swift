@@ -7,22 +7,21 @@ import SystemConfiguration
 class PulseBoardNetwork: NSObject {
 
   @objc func getNetworkInfo(
-    _ resolve: @escaping RCTPromiseResolveBlock,
-    rejecter reject: @escaping RCTPromiseRejectBlock
+    _ resolve: @escaping (Any?) -> Void,
+    rejecter reject: @escaping (String?, String?, Error?) -> Void
   ) {
-    let monitor   = NWPathMonitor()
-    let queue     = DispatchQueue(label: "com.pulseboard.network")
+    let monitor = NWPathMonitor()
+    let queue   = DispatchQueue(label: "com.pulseboard.network")
 
     monitor.pathUpdateHandler = { path in
       monitor.cancel()
 
-      let isConnected   = path.status == .satisfied
-      let isWifi        = path.usesInterfaceType(.wifi)
-      let isCellular    = path.usesInterfaceType(.cellular)
+      let isConnected  = path.status == .satisfied
+      let isWifi       = path.usesInterfaceType(.wifi)
+      let isCellular   = path.usesInterfaceType(.cellular)
 
       var carrier = "unknown"
       if #available(iOS 16.0, *) {
-        // CTCarrier is deprecated in iOS 16 — use fallback
         carrier = "unknown"
       } else {
         let networkInfo = CTTelephonyNetworkInfo()
@@ -55,7 +54,7 @@ class PulseBoardNetwork: NSObject {
     var ptr = ifaddr
     while ptr != nil {
       defer { ptr = ptr?.pointee.ifa_next }
-      let interface = ptr?.pointee
+      let interface  = ptr?.pointee
       let addrFamily = interface?.ifa_addr.pointee.sa_family
 
       if addrFamily == UInt8(AF_INET) {

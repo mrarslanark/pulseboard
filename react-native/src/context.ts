@@ -1,17 +1,15 @@
-import { NetInfoStateType } from "@react-native-community/netinfo";
+import { Dimensions, I18nManager, Platform } from "react-native";
+import NativePulseBoardDevice from "./specs/NativePulseBoardDevice";
+import NativePulseBoardNetwork from "./specs/NativePulseBoardNetwork";
 import {
   AppContext,
   DeviceContext,
   EnrichedContext,
   NetworkContext,
   NetworkType,
-  Platform as PlatformType,
   SessionContext,
   UserContext,
 } from "./types";
-import { Dimensions, I18nManager, NativeModules, Platform } from "react-native";
-import DeviceInfo from "react-native-device-info";
-import NetInfo from "@react-native-community/netinfo";
 
 function generateSessionId(): string {
   const timestamp = Date.now().toString(36);
@@ -19,24 +17,13 @@ function generateSessionId(): string {
   return `${timestamp}-${random}`;
 }
 
-function detectPlatform(): PlatformType {
-  switch (Platform.OS) {
-    case "ios":
-      return "ios";
-    case "android":
-      return "android";
-    default:
-      return "unknown";
-  }
-}
-
-function mapNetworkType(type: NetInfoStateType): NetworkType {
+function mapNetworkType(type: string): NetworkType {
   switch (type) {
-    case NetInfoStateType.wifi:
+    case "wifi":
       return "wifi";
-    case NetInfoStateType.cellular:
+    case "cellular":
       return "cellular";
-    case NetInfoStateType.none:
+    case "offline":
       return "offline";
     default:
       return "unknown";
@@ -45,17 +32,7 @@ function mapNetworkType(type: NetInfoStateType): NetworkType {
 
 function getTimezone(): string {
   try {
-    // React Native exposes timezone via Intl or native modules
-    if (typeof Intl !== "undefined") {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    }
-
-    // Android fallback
-    if (Platform.OS === "android") {
-      return NativeModules.RNLocalize?.timeZone ?? "unknown";
-    }
-
-    return "unknown";
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch {
     return "unknown";
   }
@@ -63,17 +40,11 @@ function getTimezone(): string {
 
 function getLanguage(): string {
   try {
-    // I18nManager is built into React Native
-    const locale = I18nManager.getConstants?.()?.localeIdentifier;
-    if (locale) {
-      return locale.replace("_", "-");
-    }
-
-    if (typeof Intl !== "undefined") {
-      return Intl.DateTimeFormat().resolvedOptions().locale;
-    }
-
-    return "unknown";
+    return (
+      I18nManager.getConstants?.()?.localeIdentifier?.replace("_", "-") ??
+      Intl.DateTimeFormat().resolvedOptions().locale ??
+      "unknown"
+    );
   } catch {
     return "unknown";
   }
@@ -101,8 +72,39 @@ export class ContextCollector {
   }
 
   async collect(): Promise<EnrichedContext> {
-    const device = await this.collectDevice();
-    const network = await this.collectNetwork();
+    const [deviceInfo, networkInfo] = await Promise.all([
+      NativePulseBoardDevice.getDeviceInfo(),
+      NativePulseBoardNetwork.getNetworkInfo(),
+    ]);
+
+    const { width, height } = Dimensions.get("window");
+
+    const device: DeviceContext = {
+      platform: Platform.OS === "ios" ? "ios" : "android",
+      os: deviceInfo.os,
+      osVersion: deviceInfo.osVersion,
+      model: deviceInfo.model,
+      manufacturer: deviceInfo.manufacturer,
+      brand: deviceInfo.brand,
+      isTablet: deviceInfo.isTablet,
+      appVersion: this.appContext.appVersion ?? deviceInfo.appVersion,
+      buildNumber: this.appContext.buildNumber ?? deviceInfo.buildNumber,
+      bundleId: deviceInfo.bundleId,
+      screenWidth: deviceInfo.screenWidth || width,
+      screenHeight: deviceInfo.screenHeight || height,
+      fontScale: Dimensions.get("window").fontScale ?? 1,
+      isEmulator: deviceInfo.isEmulator,
+      language: getLanguage(),
+      timezone: getTimezone(),
+    };
+
+    const network: NetworkContext = {
+      type: mapNetworkType(networkInfo.type),
+      isConnected: networkInfo.isConnected,
+      isWifiEnabled: networkInfo.isWifiEnabled,
+      carrier: networkInfo.carrier,
+      ipAddress: networkInfo.ipAddress,
+    };
 
     return {
       app: this.appContext,
@@ -111,74 +113,5 @@ export class ContextCollector {
       session: this.sessionContext,
       user: this.userContext,
     };
-  }
-
-  private async collectDevice(): Promise<DeviceContext> {
-    const { width, height } = Dimensions.get("window");
-
-    // These are all async but fast - device info is cached by the library
-    const [
-      model,
-      manufacturer,
-      brand,
-      osVersion,
-      appVersion,
-      buildNumber,
-      bundleId,
-      isTablet,
-      isEmulator,
-    ] = await Promise.all([
-      DeviceInfo.getModel(),
-      DeviceInfo.getManufacturer(),
-      DeviceInfo.getBrand(),
-      Promise.resolve(DeviceInfo.getSystemVersion()),
-      Promise.resolve(DeviceInfo.getVersion()),
-      Promise.resolve(DeviceInfo.getBuildNumber()),
-      Promise.resolve(DeviceInfo.getBundleId()),
-      Promise.resolve(DeviceInfo.isTablet()),
-      DeviceInfo.isEmulator(),
-    ]);
-
-    return {
-      platform: detectPlatform(),
-      os: Platform.OS === "ios" ? "iOS" : "Android",
-      osVersion,
-      model,
-      manufacturer,
-      brand,
-      isTablet,
-      appVersion: this.appContext.appVersion ?? appVersion,
-      buildNumber: this.appContext.buildNumber ?? buildNumber,
-      bundleId,
-      screenWidth: width,
-      screenHeight: height,
-      fontScale: Dimensions.get("window").fontScale ?? 1,
-      isEmulator,
-      language: getLanguage(),
-      timezone: getTimezone(),
-    };
-  }
-
-  private async collectNetwork(): Promise<NetworkContext> {
-    try {
-      const state = await NetInfo.fetch();
-      const details = state.details as any;
-
-      return {
-        type: mapNetworkType(state.type),
-        isConnected: state.isConnected ?? false,
-        isWifiEnabled: state.type === NetInfoStateType.wifi,
-        carrier: details?.carrier ?? "unknown",
-        ipAddress: details?.ipAddress ?? "unknown",
-      };
-    } catch {
-      return {
-        type: "unknown",
-        isConnected: false,
-        isWifiEnabled: false,
-        carrier: "unknown",
-        ipAddress: "unknown",
-      };
-    }
   }
 }
