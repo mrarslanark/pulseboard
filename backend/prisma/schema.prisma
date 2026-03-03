@@ -4,19 +4,57 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  password     String
-  name         String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+// ─── Enums ────────────────────────────────────────────────────────────────────
 
-  projects     Project[]
-  refreshTokens RefreshToken[]
+enum EventType {
+  error
+  event
+  metric
+}
+
+enum AnalyticsEventType {
+  crash
+  session
+  screen_view
+  api_call
+  metric
+  custom
+}
+
+enum MemberRole {
+  owner
+  admin
+  member
+}
+
+enum InsightSeverity {
+  critical
+  warning
+  info
+}
+
+enum InsightCategory {
+  crash
+  performance
+  network
+  release
+  user_behaviour
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  password       String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  refreshTokens  RefreshToken[]
+  projects       Project[]
 }
 
 model RefreshToken {
@@ -25,21 +63,29 @@ model RefreshToken {
   userId    String
   expiresAt DateTime
   createdAt DateTime @default(now())
-
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+// ─── Project ──────────────────────────────────────────────────────────────────
 
 model Project {
-  id        String   @id @default(cuid())
-  name      String
-  apiKey    String   @unique @default(cuid())
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String           @id @default(cuid())
+  name            String
+  apiKey          String           @unique @default(cuid())
+  userId          String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events          Event[]
+  analyticsEvents AnalyticsEvent[]
+  sessions        Session[]
+  insights        Insight[]
+  crashGroups     CrashGroup[]
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  events    Event[]
+  @@index([userId])
 }
+
+// ─── Raw Events (existing) ────────────────────────────────────────────────────
 
 model Event {
   id         String    @id @default(cuid())
@@ -49,7 +95,6 @@ model Event {
   payload    Json
   timestamp  DateTime
   receivedAt DateTime  @default(now())
-
   project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
@@ -57,8 +102,173 @@ model Event {
   @@index([timestamp])
 }
 
-enum EventType {
-  error
-  event
-  metric
+// ─── Structured Analytics Events ──────────────────────────────────────────────
+
+model AnalyticsEvent {
+  id         String             @id @default(cuid())
+  projectId  String
+  type       AnalyticsEventType
+  sessionId  String?
+  timestamp  DateTime
+  receivedAt DateTime           @default(now())
+
+  // Device context
+  platform     String?
+  os           String?
+  osVersion    String?
+  deviceModel  String?
+  manufacturer String?
+  appVersion   String?
+  buildNumber  String?
+  isEmulator   Boolean?
+
+  // Network context
+  networkType String?
+  carrier     String?
+
+  // User context
+  userId   String?
+  language String?
+  timezone String?
+
+  // Type-specific fields
+  screenName     String?   // screen_view, crash
+  loadTime       Int?      // screen_view (ms)
+  timeSpent      Int?      // screen_view (ms)
+  endpoint       String?   // api_call
+  httpMethod     String?   // api_call
+  statusCode     Int?      // api_call
+  duration       Int?      // api_call (ms)
+  payloadSize    Int?      // api_call (bytes)
+  errorMessage   String?   // crash
+  errorName      String?   // crash
+  stackTrace     String?   // crash
+  isFatal        Boolean?  // crash
+  crashGroupId   String?   // crash — links to CrashGroup
+  metricName     String?   // metric
+  metricValue    Float?    // metric
+  metricUnit     String?   // metric
+  eventName      String?   // custom
+  eventPayload   Json?     // custom
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  crashGroup CrashGroup? @relation(fields: [crashGroupId], references: [id])
+
+  @@index([projectId])
+  @@index([type])
+  @@index([timestamp])
+  @@index([appVersion])
+  @@index([deviceModel])
+  @@index([crashGroupId])
+  @@index([sessionId])
+}
+
+// ─── Sessions ─────────────────────────────────────────────────────────────────
+
+model Session {
+  id         String    @id @default(cuid())
+  projectId  String
+  sessionId  String    // SDK-generated session ID
+  userId     String?
+  appVersion String?
+  platform   String?
+  os         String?
+  osVersion  String?
+  deviceModel String?
+  startedAt  DateTime
+  endedAt    DateTime?
+  duration   Int?      // ms
+  crashed    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([appVersion])
+  @@index([crashed])
+  @@index([startedAt])
+}
+
+// ─── Crash Groups ─────────────────────────────────────────────────────────────
+
+model CrashGroup {
+  id            String           @id @default(cuid())
+  projectId     String
+  fingerprint   String           // hash of error name + top stack frame
+  errorName     String
+  errorMessage  String
+  occurrences   Int              @default(1)
+  affectedUsers Int              @default(0)
+  firstSeenAt   DateTime
+  lastSeenAt    DateTime
+  resolved      Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  events        AnalyticsEvent[]
+
+  @@unique([projectId, fingerprint])
+  @@index([projectId])
+  @@index([lastSeenAt])
+  @@index([occurrences])
+}
+
+// ─── AI Insights ──────────────────────────────────────────────────────────────
+
+model Insight {
+  id          String          @id @default(cuid())
+  projectId   String
+  title       String
+  description String
+  severity    InsightSeverity
+  category    InsightCategory
+  metadata    Json?           // supporting data the AI used
+  isRead      Boolean         @default(false)
+  generatedAt DateTime        @default(now())
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([severity])
+  @@index([isRead])
+  @@index([generatedAt])
+}
+
+// ─── Daily Aggregates (pre-computed for performance) ──────────────────────────
+
+model DailyAggregate {
+  id              String   @id @default(cuid())
+  projectId       String
+  date            DateTime @db.Date
+  appVersion      String?
+  platform        String?
+  os              String?
+  osVersion       String?
+  deviceModel     String?
+  networkType     String?
+
+  // Crash metrics
+  totalCrashes    Int      @default(0)
+  uniqueCrashers  Int      @default(0)
+  fatalCrashes    Int      @default(0)
+
+  // Session metrics
+  totalSessions   Int      @default(0)
+  crashedSessions Int      @default(0)
+  avgSessionLength Int     @default(0)
+
+  // Performance metrics
+  avgLaunchTime   Int?     // ms
+  avgScreenLoad   Int?     // ms
+  avgApiDuration  Int?     // ms
+  apiErrorRate    Float?   // 0-1
+
+  // User metrics
+  activeUsers     Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([projectId, date, appVersion, platform, os, osVersion, deviceModel, networkType])
+  @@index([projectId])
+  @@index([date])
+  @@index([appVersion])
 }
