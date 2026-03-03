@@ -13,7 +13,10 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "ios",
+    "android",
+    "react-native.config.js"
   ],
   "scripts": {
     "build": "tsup",
@@ -23,10 +26,6 @@
   "peerDependencies": {
     "react": ">=18",
     "react-native": ">=0.73"
-  },
-  "dependencies": {
-    "react-native-device-info": "^10.0.0",
-    "@react-native-community/netinfo": "^11.0.0"
   },
   "devDependencies": {
     "@types/react": "*",
