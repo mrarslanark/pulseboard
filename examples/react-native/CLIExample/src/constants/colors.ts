@@ -10,4 +10,5 @@ export const Colors = {
   blue: '#4a9eff',
   yellow: '#ffd166',
   orange: '#ff9f43',
+  dimmed: '#2a2a3a',
 };

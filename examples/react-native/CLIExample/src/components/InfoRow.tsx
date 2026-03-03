@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Colors } from '../constants';
 
 type Props = {
   label: string;
@@ -17,12 +18,6 @@ export const InfoRow: React.FC<Props> = ({ label, value }) => {
   );
 };
 
-const COLORS = {
-  text: '#ffffff',
-  muted: '#5a5a7a',
-  dimmed: '#2a2a3a',
-};
-
 const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
@@ -30,16 +25,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.dimmed,
+    borderBottomColor: Colors.dimmed,
   },
   infoLabel: {
     fontSize: 13,
-    color: COLORS.muted,
+    color: Colors.muted,
     flex: 1,
   },
   infoValue: {
     fontSize: 13,
-    color: COLORS.text,
+    color: Colors.text,
     fontFamily: 'monospace',
     flex: 2,
     textAlign: 'right',

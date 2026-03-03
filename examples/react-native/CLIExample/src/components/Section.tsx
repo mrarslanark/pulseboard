@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Colors } from '../constants';
 
 type Props = {
   title: string;
@@ -16,19 +17,13 @@ export const Section: React.FC<Props> = ({ title, color, children }) => {
   );
 };
 
-const COLORS = {
-  card: '#111118',
-  border: '#1e1e2e',
-  muted: '#5a5a7a',
-};
-
 const styles = StyleSheet.create({
   section: {
     marginBottom: 16,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     overflow: 'hidden',
   },
   sectionHeader: {
@@ -36,12 +31,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderLeftWidth: 3,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.muted,
+    color: Colors.muted,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
