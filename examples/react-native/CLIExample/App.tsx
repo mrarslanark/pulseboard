@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PulseBoardErrorBoundary } from './src/components/PulseBoardErrorBoundary';
 import { initPulseBoard } from './src/config/pulseboard';
 import { HomeScreen } from './src/screens/HomeScreen';
-import { StatusBar } from 'react-native';
+import { StatusBar, StyleSheet } from 'react-native';
 
 initPulseBoard();
 
@@ -21,10 +21,7 @@ function App() {
         translucent
         backgroundColor={'#0a0a0f'}
       />
-      <SafeAreaView
-        edges={['top', 'bottom']}
-        style={{ flex: 1, backgroundColor: '#0a0a0f' }}
-      >
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeAreView}>
         <PulseBoardErrorBoundary screenName="App">
           <HomeScreen />
         </PulseBoardErrorBoundary>
@@ -32,5 +29,12 @@ function App() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  safeAreView: {
+    flex: 1,
+    backgroundColor: '#0a0a0f',
+  },
+});
 
 export default App;
