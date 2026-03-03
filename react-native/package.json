@@ -5,6 +5,7 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "homepage": "https://github.com/mrarslanark/pulseboard",
   "exports": {
     ".": {
       "import": "./dist/index.js",
