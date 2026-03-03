@@ -4,6 +4,7 @@ import {
   CaptureErrorOptions,
   PulseEvent,
   UserContext,
+  EnrichedContext,
 } from "./types";
 import { PulseBoardClient } from "./client";
 import { EventQueue } from "./queue";
@@ -51,6 +52,11 @@ class PulseBoardSDK {
 
     this.initialized = true;
     this.log(`Initialized — host: ${this.config.host}`);
+  }
+
+  async getContext(): Promise<EnrichedContext> {
+    this.assertInitialized("getContext");
+    return this.contextCollector!.collect();
   }
 
   identify(user: UserContext): void {
