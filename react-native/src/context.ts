@@ -1,14 +1,15 @@
-import { Dimensions, I18nManager, Platform } from "react-native";
+import { Platform, Dimensions, I18nManager } from "react-native";
 import NativePulseBoardDevice from "./specs/NativePulseBoardDevice";
 import NativePulseBoardNetwork from "./specs/NativePulseBoardNetwork";
 import {
-  AppContext,
-  DeviceContext,
-  EnrichedContext,
-  NetworkContext,
+  Platform as PlatformType,
   NetworkType,
+  DeviceContext,
+  NetworkContext,
   SessionContext,
+  AppContext,
   UserContext,
+  EnrichedContext,
 } from "./types";
 
 function generateSessionId(): string {
@@ -72,38 +73,56 @@ export class ContextCollector {
   }
 
   async collect(): Promise<EnrichedContext> {
-    const [deviceInfo, networkInfo] = await Promise.all([
-      NativePulseBoardDevice.getDeviceInfo(),
-      NativePulseBoardNetwork.getNetworkInfo(),
-    ]);
-
     const { width, height } = Dimensions.get("window");
+
+    // Collect device info — fall back gracefully if native module unavailable
+    let deviceInfo = null;
+    let networkInfo = null;
+
+    try {
+      if (NativePulseBoardDevice) {
+        deviceInfo = await NativePulseBoardDevice.getDeviceInfo();
+      }
+    } catch (e) {
+      console.warn("[PulseBoard] Failed to collect device info:", e);
+    }
+
+    try {
+      if (NativePulseBoardNetwork) {
+        networkInfo = await NativePulseBoardNetwork.getNetworkInfo();
+      }
+    } catch (e) {
+      console.warn("[PulseBoard] Failed to collect network info:", e);
+    }
 
     const device: DeviceContext = {
       platform: Platform.OS === "ios" ? "ios" : "android",
-      os: deviceInfo.os,
-      osVersion: deviceInfo.osVersion,
-      model: deviceInfo.model,
-      manufacturer: deviceInfo.manufacturer,
-      brand: deviceInfo.brand,
-      isTablet: deviceInfo.isTablet,
-      appVersion: this.appContext.appVersion ?? deviceInfo.appVersion,
-      buildNumber: this.appContext.buildNumber ?? deviceInfo.buildNumber,
-      bundleId: deviceInfo.bundleId,
-      screenWidth: deviceInfo.screenWidth || width,
-      screenHeight: deviceInfo.screenHeight || height,
+      os: deviceInfo?.os ?? (Platform.OS === "ios" ? "iOS" : "Android"),
+      osVersion:
+        deviceInfo?.osVersion ?? Platform.Version?.toString() ?? "unknown",
+      model: deviceInfo?.model ?? "unknown",
+      manufacturer: deviceInfo?.manufacturer ?? "unknown",
+      brand: deviceInfo?.brand ?? "unknown",
+      isTablet: deviceInfo?.isTablet ?? false,
+      appVersion:
+        this.appContext.appVersion ?? deviceInfo?.appVersion ?? "unknown",
+      buildNumber:
+        this.appContext.buildNumber ?? deviceInfo?.buildNumber ?? "unknown",
+      bundleId: deviceInfo?.bundleId ?? "unknown",
+      screenWidth: deviceInfo?.screenWidth ?? width,
+      screenHeight: deviceInfo?.screenHeight ?? height,
       fontScale: Dimensions.get("window").fontScale ?? 1,
-      isEmulator: deviceInfo.isEmulator,
+      isEmulator: deviceInfo?.isEmulator ?? false,
       language: getLanguage(),
       timezone: getTimezone(),
     };
 
     const network: NetworkContext = {
-      type: mapNetworkType(networkInfo.type),
-      isConnected: networkInfo.isConnected,
-      isWifiEnabled: networkInfo.isWifiEnabled,
-      carrier: networkInfo.carrier,
-      ipAddress: networkInfo.ipAddress,
+      type: mapNetworkType(networkInfo?.type ?? "unknown"),
+      isConnected: networkInfo?.isConnected ?? false,
+      isWifiEnabled: networkInfo?.isWifiEnabled ?? false,
+      carrier: networkInfo?.carrier ?? "unknown",
+      ipAddress: networkInfo?.ipAddress ?? "unknown",
     };
 
     return {
