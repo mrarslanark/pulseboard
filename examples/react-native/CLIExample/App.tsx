@@ -1,10 +1,3 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PulseBoardErrorBoundary } from './src/components/PulseBoardErrorBoundary';
 import { initPulseBoard } from './src/config/pulseboard';
@@ -21,7 +14,7 @@ function App() {
         translucent
         backgroundColor={'#0a0a0f'}
       />
-      <SafeAreaView edges={['top', 'bottom']} style={styles.safeAreView}>
+      <SafeAreaView style={styles.safeAreView}>
         <PulseBoardErrorBoundary screenName="App">
           <HomeScreen />
         </PulseBoardErrorBoundary>
