@@ -1,9 +1,18 @@
-import { digestQueue, retentionQueue } from "./queues";
+import {
+  alertQueue,
+  digestQueue,
+  insightsQueue,
+  retentionQueue,
+} from "./queues";
 
 export async function startScheduler() {
-  // Remove existing scheduled jobs first to avoid duplicates on restart
-  await digestQueue.obliterate({ force: true });
-  await retentionQueue.obliterate({ force: true });
+  // Clear existing scheduled jobs
+  await Promise.all([
+    alertQueue.obliterate({ force: true }),
+    digestQueue.obliterate({ force: true }),
+    retentionQueue.obliterate({ force: true }),
+    insightsQueue.obliterate({ force: true }),
+  ]);
 
   // Nightly digest - runs every day at midnight
   await digestQueue.add(
@@ -23,5 +32,16 @@ export async function startScheduler() {
     },
   );
 
-  console.log("⏰ Scheduler started — digest at midnight, retention at 2am");
+  // AI insights - every 6 hours
+  await insightsQueue.add(
+    "generate-all",
+    {},
+    {
+      repeat: { pattern: process.env.INSIGHTS_CRON || "0 */6 * * *" }, // default: every 6 hours
+    },
+  );
+
+  console.log(
+    "⏰ Scheduler started — digest at midnight, retention at 2am, ai insights every 6 hours",
+  );
 }
