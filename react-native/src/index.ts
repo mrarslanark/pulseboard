@@ -20,6 +20,8 @@ class PulseBoardSDK {
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private initialized: boolean = false;
 
+  // ─── Public API ───────────────────────────────────────────────────
+
   init(config: SDKConfig): void {
     if (this.initialized) {
       this.log("SDK already initialized — skipping");
@@ -99,6 +101,112 @@ class PulseBoardSDK {
     });
   }
 
+  // ─── Analytics API ────────────────────────────────────────────────
+
+  startSession(): void {
+    this.assertInitialized("startSession");
+    this.contextCollector!.collect()
+      .then((context) => {
+        this.client!.sendAnalytics("session", {
+          apiKey: this.config!.apiKey,
+          sessionId: context.session.sessionId,
+          startedAt: context.session.startedAt,
+          context,
+        });
+        this.log(`Session started: ${context.session.sessionId}`);
+      })
+      .catch((err) => {
+        this.log(`Failed to start session: ${err}`);
+      });
+  }
+
+  endSession(duration?: number): void {
+    this.assertInitialized("endSession");
+    this.contextCollector!.collect()
+      .then((context) => {
+        this.client!.sendAnalytics("session", {
+          apiKey: this.config!.apiKey,
+          sessionId: context.session.sessionId,
+          startedAt: context.session.startedAt,
+          endedAt: new Date().toISOString(),
+          duration,
+          context,
+        });
+        this.flush();
+        this.log(`Session ended: ${context.session.sessionId}`);
+      })
+      .catch((err) => {
+        this.log(`Failed to end session: ${err}`);
+      });
+  }
+
+  trackScreen(screenName: string, loadTime?: number): void {
+    this.assertInitialized("trackScreen");
+    this.contextCollector!.collect()
+      .then((context) => {
+        this.client!.sendAnalytics("screen-view", {
+          apiKey: this.config!.apiKey,
+          screenName,
+          loadTime,
+          sessionId: context.session.sessionId,
+          context,
+        });
+        this.log(`Screen tracked: ${screenName}`);
+      })
+      .catch((err) => {
+        this.log(`Failed to track screen: ${err}`);
+      });
+  }
+
+  trackApiCall(
+    endpoint: string,
+    httpMethod: string,
+    statusCode: number,
+    duration: number,
+    payloadSize?: number,
+  ): void {
+    this.assertInitialized("trackApiCall");
+    this.contextCollector!.collect()
+      .then((context) => {
+        this.client!.sendAnalytics("api-call", {
+          apiKey: this.config!.apiKey,
+          endpoint,
+          httpMethod,
+          statusCode,
+          duration,
+          payloadSize,
+          sessionId: context.session.sessionId,
+          context,
+        });
+        this.log(`API call tracked: ${httpMethod} ${endpoint} ${statusCode}`);
+      })
+      .catch((err) => {
+        this.log(`Failed to track API call: ${err}`);
+      });
+  }
+
+  trackCrash(error: Error, isFatal = false): void {
+    this.assertInitialized("trackCrash");
+    this.contextCollector!.collect()
+      .then((context) => {
+        this.client!.sendAnalytics("crash", {
+          apiKey: this.config!.apiKey,
+          errorName: error.name,
+          errorMessage: error.message,
+          stackTrace: error.stack ?? "",
+          isFatal,
+          sessionId: context.session.sessionId,
+          context,
+        });
+        this.log(`Crash tracked: ${error.name} — fatal: ${isFatal}`);
+      })
+      .catch((err) => {
+        this.log(`Failed to track crash: ${err}`);
+      });
+  }
+
+  // ─── Flush & Destroy ─────────────────────────────────────────────
+
   async flush(): Promise<void> {
     if (!this.queue || this.queue.isEmpty) return;
     if (!this.client) return;
@@ -126,7 +234,7 @@ class PulseBoardSDK {
     this.log("SDK destroyed");
   }
 
-  // ─── Private ──────────────────────────────────────────────────────
+  // ─── Private ─────────────────────────────────────────────────────
 
   private buildAndEnqueue(
     type: "event" | "metric" | "error",
@@ -134,7 +242,6 @@ class PulseBoardSDK {
     payload: Record<string, unknown>,
     timestamp?: string,
   ): void {
-    // Collect context async then enqueue — don't block the caller
     this.contextCollector!.collect()
       .then((context) => {
         const event: PulseEvent = {
@@ -149,7 +256,6 @@ class PulseBoardSDK {
         this.queue!.enqueue(event);
         this.log(`Queued: ${type} — ${name}`);
 
-        // Flush errors immediately
         if (type === "error") {
           this.flush();
         }

@@ -1,5 +1,7 @@
 import { PulseEvent } from "./types";
 
+type AnalyticsType = "crash" | "session" | "screen-view" | "api-call";
+
 export class PulseBoardClient {
   private host: string;
   private debug: boolean;
@@ -8,6 +10,8 @@ export class PulseBoardClient {
     this.host = host.replace(/\/$/, "");
     this.debug = debug;
   }
+
+  // ─── Event Ingest ─────────────────────────────────────────────────
 
   async send(event: PulseEvent): Promise<boolean> {
     try {
@@ -24,7 +28,7 @@ export class PulseBoardClient {
         return false;
       }
 
-      this.log(`Event send: ${event.type} - ${event.name}`);
+      this.log(`Event sent: ${event.type} — ${event.name}`);
       return true;
     } catch (err) {
       this.log(`Network error sending event: ${err}`);
@@ -33,7 +37,6 @@ export class PulseBoardClient {
   }
 
   async sendBatch(events: PulseEvent[]): Promise<boolean> {
-    // Send concurrently but cap at 5 at a time
     const chunks = this.chunk(events, 5);
 
     for (const chunk of chunks) {
@@ -43,6 +46,36 @@ export class PulseBoardClient {
     return true;
   }
 
+  // ─── Analytics Ingest ─────────────────────────────────────────────
+
+  async sendAnalytics(
+    type: AnalyticsType,
+    payload: Record<string, unknown>,
+  ): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.host}/analytics/${type}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        this.log(
+          `Failed to send analytics: ${response.status} ${response.statusText}`,
+        );
+        return false;
+      }
+
+      this.log(`Analytics sent: ${type}`);
+      return true;
+    } catch (err) {
+      this.log(`Network error sending analytics: ${err}`);
+      return false;
+    }
+  }
+
+  // ─── Private ──────────────────────────────────────────────────────
+
   private chunk<T>(arr: T[], size: number): T[][] {
     return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
       arr.slice(i * size, i * size + size),
@@ -51,7 +84,7 @@ export class PulseBoardClient {
 
   private log(message: string): void {
     if (this.debug) {
-      console.log(`[Pulseboard] ${message}`);
+      console.log(`[PulseBoard] ${message}`);
     }
   }
 }
