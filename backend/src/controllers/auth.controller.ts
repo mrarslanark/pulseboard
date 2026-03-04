@@ -6,7 +6,7 @@ const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "strict" as const,
-  path: "/auth/refresh",
+  path: "/auth",
   maxAge: 60 * 60 * 24 * 7,
 };
 
@@ -100,7 +100,7 @@ class AuthController {
       await authService.logout(token);
     }
 
-    reply.clearCookie("refreshToken", { path: "/auth/refresh" });
+    reply.clearCookie("refreshToken", { path: "/auth" });
 
     return reply.send({ success: true, message: "Logged out" });
   }
