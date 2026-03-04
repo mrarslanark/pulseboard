@@ -1,9 +1,4 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
-const path = require('path');
-
-const sdkPath = path.resolve(__dirname, '../../../react-native');
-
-const defaultConfig = getDefaultConfig(__dirname);
 
 /**
  * Metro configuration
@@ -11,13 +6,6 @@ const defaultConfig = getDefaultConfig(__dirname);
  *
  * @type {import('@react-native/metro-config').MetroConfig}
  */
-const config = {
-  watchFolders: [sdkPath],
-  resolver: {
-    extraNodeModules: {
-      '@pulseboard/react-native': sdkPath,
-    },
-  },
-};
+const config = {};
 
 module.exports = mergeConfig(getDefaultConfig(__dirname), config);
