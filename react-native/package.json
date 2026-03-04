@@ -25,7 +25,9 @@
   "files": [
     "dist",
     "ios",
-    "android",
+    "android/src",
+    "android/build.gradle",
+    "android/src/main/AndroidManifest.xml",
     "react-native.config.js",
     "PulseBoardSDK.podspec"
   ],
