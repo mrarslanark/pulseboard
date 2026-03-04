@@ -1,7 +1,9 @@
 import fastifyCookie from "@fastify/cookie";
 import fastifyCors from "@fastify/cors";
+import fastifyEnv from "@fastify/env";
 import fastifyJwt from "@fastify/jwt";
 import Fastify, { FastifyReply, FastifyRequest } from "fastify";
+import { envSchema } from "./schemas/env";
 
 const app = Fastify({
   logger: {
@@ -12,6 +14,13 @@ const app = Fastify({
       },
     },
   },
+});
+
+// Register env
+app.register(fastifyEnv, {
+  schema: envSchema,
+  dotenv: true,
+  confKey: "config",
 });
 
 app.register(fastifyCors, {
