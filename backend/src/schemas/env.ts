@@ -7,7 +7,7 @@ export const envSchema = {
     "JWT_ACCESS_SECRET",
     "JWT_REFRESH_SECRET",
     "REDIS_URL",
-    "ANTHROPIC_API_KEY",
+    "AI_ENCRYPTION_KEY",
   ],
   properties: {
     PORT: { type: "string", default: "3000" },
@@ -29,5 +29,6 @@ export const envSchema = {
     RETENTION_DAYS: { type: "string", default: "30" },
     ANTHROPIC_API_KEY: { type: "string" },
     INSIGHTS_CRON: { type: "string", default: "0 */6 * * *" },
+    AI_ENCRYPTION_KEY: { type: "string" },
   },
 };
