@@ -1,9 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import {
-  AIMessage,
-  AIResponse,
-  BaseAIAdapter,
-} from "../services/ai-provider.service";
+import { BaseAIAdapter } from "./base";
+import type { AIMessage, AIResponse } from "./types";
 
 export class AnthropicAdapter extends BaseAIAdapter {
   private readonly client: Anthropic;
