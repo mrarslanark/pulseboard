@@ -3,13 +3,22 @@
   "version": "0.1.0",
   "description": "Official PulseBoard SDK for React Native",
   "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "homepage": "https://github.com/mrarslanark/pulseboard",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrarslanark/pulseboard"
+  },
+  "bugs": {
+    "email": "m.arslanmushtaqahmed@gmail.com",
+    "url": "https://github.com/mrarslanark/pulseboard"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
   },
@@ -17,7 +26,8 @@
     "dist",
     "ios",
     "android",
-    "react-native.config.js"
+    "react-native.config.js",
+    "PulseBoardSDK.podspec"
   ],
   "scripts": {
     "build": "tsup",
@@ -38,10 +48,11 @@
     "react-native",
     "monitoring",
     "observability",
+    "crash-reporting",
     "error-tracking",
+    "analytics",
     "pulseboard"
   ],
-  "license": "MIT",
   "author": {
     "email": "m.arslanmushtaqahmed@gmail.com",
     "name": "Arslan Mushtaq",
