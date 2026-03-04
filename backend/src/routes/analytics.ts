@@ -5,20 +5,20 @@ import { analyticsController } from "../controllers/analytics.controller";
 export default async function analyticsRoutes(app: FastifyInstance) {
   // ─── Ingest (API Key auth, no Bearer token) ──────────────────────────
   app.post(
-    "/ingest/crash",
+    "/analytics/crash",
     { schema: TrackCrashSchema },
     analyticsController.trackCrash.bind(analyticsController),
   );
   app.post(
-    "/ingest/session",
+    "/analytics/session",
     analyticsController.trackSession.bind(analyticsController),
   );
   app.post(
-    "/ingest/screen-view",
+    "/analytics/screen-view",
     analyticsController.trackScreenView.bind(analyticsController),
   );
   app.post(
-    "/ingest/api-call",
+    "/analytics/api-call",
     analyticsController.trackApiCall.bind(analyticsController),
   );
 
