@@ -296,7 +296,12 @@ export class AnalyticsService {
 
     const results = await prisma.analyticsEvent.groupBy({
       by: ["endpoint"],
-      where: { projectId, type: "api_call", timestamp: { gte: since } },
+      where: {
+        projectId,
+        type: "api_call",
+        timestamp: { gte: since },
+        endpoint: { not: null },
+      },
       _count: { id: true },
       _avg: { duration: true },
       orderBy: { _avg: { duration: "desc" } },
@@ -315,7 +320,12 @@ export class AnalyticsService {
 
     const results = await prisma.analyticsEvent.groupBy({
       by: ["screenName"],
-      where: { projectId, type: "screen_view", timestamp: { gte: since } },
+      where: {
+        projectId,
+        type: "screen_view",
+        timestamp: { gte: since },
+        screenName: { not: null },
+      },
       _count: { id: true },
       _avg: { loadTime: true },
       orderBy: { _avg: { loadTime: "desc" } },
