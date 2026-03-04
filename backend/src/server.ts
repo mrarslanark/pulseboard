@@ -6,6 +6,7 @@ import app from "./app";
 import authRoutes from "./routes/auth";
 import ingestRoutes from "./routes/ingest";
 import projectRoutes from "./routes/projects";
+import analyticsRoutes from "./routes/analytics";
 
 // Libraries
 import { connectRedis } from "./lib/redis";
@@ -13,12 +14,14 @@ import { connectRedis } from "./lib/redis";
 // Schedulers
 import { startScheduler } from "./lib/scheduler";
 
+// Socket.io
+import { createSocketServer } from "./lib/socket";
+
 // Workers
 import "./workers/alert.worker";
 import "./workers/digest.worker";
 import "./workers/retention.worker";
-import { createServer } from "http";
-import { createSocketServer } from "./lib/socket";
+import "./workers/insights.worker";
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -26,6 +29,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 app.register(authRoutes);
 app.register(projectRoutes);
 app.register(ingestRoutes);
+app.register(analyticsRoutes);
 
 const start = async () => {
   try {
