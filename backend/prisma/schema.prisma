@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url = env("DATABASE_URL")
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -81,6 +81,7 @@ model Project {
   sessions        Session[]
   insights        Insight[]
   crashGroups     CrashGroup[]
+  aiConfig        AIConfig?
 
   @@index([userId])
 }
@@ -271,4 +272,16 @@ model DailyAggregate {
   @@index([projectId])
   @@index([date])
   @@index([appVersion])
+}
+
+model AIConfig {
+  id         String   @id @default(cuid())
+  projectId  String   @unique
+  provider   String   // anthropic | openai | moonshot | google
+  model      String   // claude-sonnet-4-5 | gpt-4o | moonshot-v1-8k | gemini-1.5-pro
+  apiKey     String   // encrypted
+  keyHint    String   // last 4 characters of the original key e.g. "a1b2"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
