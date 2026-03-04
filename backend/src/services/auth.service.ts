@@ -28,6 +28,9 @@ class AuthService {
       data: { name, email, password: hashed },
     });
 
+    // Defenstive deletion - clean slate on register
+    await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+
     return this.buildAuthResult(user);
   }
 
@@ -37,6 +40,9 @@ class AuthService {
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new Error("INVALID_CREDENTIALS");
+
+    // Delete all existing refresh tokens for this user - one active session at a time
+    await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
 
     return this.buildAuthResult(user);
   }
@@ -51,13 +57,21 @@ class AuthService {
       throw new Error("INVALID_REFRESH_TOKEN");
     }
 
-    await prisma.refreshToken.delete({ where: { token: oldToken } });
+    await prisma.refreshToken.deleteMany({
+      where: { userId: existing.user.id },
+    });
 
     return this.buildAuthResult(existing.user);
   }
 
   async logout(token: string): Promise<void> {
-    await prisma.refreshToken.deleteMany({ where: { token } });
+    const existing = await prisma.refreshToken.findUnique({ where: { token } });
+
+    if (existing) {
+      await prisma.refreshToken.deleteMany({
+        where: { userId: existing.userId },
+      });
+    }
   }
 
   generateAccessToken(userId: string, email: string): string {
