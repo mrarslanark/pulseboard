@@ -1,10 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "../lib/prisma";
+import { encryptionService } from "../lib/encryption";
+import { aiService } from "./ai.service";
 import { analyticsService } from "./analytics.service";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
+import type { AIProvider, AIModel } from "../adapters";
 
 type InsightResult = {
   title: string;
@@ -14,15 +12,39 @@ type InsightResult = {
   metadata: Record<string, unknown>;
 };
 
-export class InsightsService {
+class InsightsService {
+  // ─── Generate for single project ────────────────────────────────────
+
   async generateInsightsForProject(projectId: string): Promise<void> {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
+      include: { aiConfig: true },
     });
 
     if (!project) return;
 
-    // Gather all analytics data
+    // Skip silently if no AI config set
+    if (!project.aiConfig) {
+      console.log(
+        `[InsightsService] No AI config for project ${projectId} — skipping`,
+      );
+      return;
+    }
+
+    // Decrypt API key
+    let decryptedApiKey: string;
+
+    try {
+      decryptedApiKey = encryptionService.decrypt(project.aiConfig.apiKey);
+    } catch (err) {
+      console.error(
+        `[InsightsService] Failed to decrypt API key for project ${projectId}:`,
+        err,
+      );
+      return;
+    }
+
+    // Gather analytics data
     const [
       crashRate,
       topCrashes,
@@ -39,8 +61,9 @@ export class InsightsService {
       analyticsService.getScreenPerformance(projectId, 7),
     ]);
 
-    // Build structured prompt
-    const prompt = this.buildPrompt({
+    // Build prompt
+    const system = this.buildSystemPrompt();
+    const message = this.buildUserPrompt({
       projectName: project.name,
       crashRate,
       topCrashes,
@@ -50,34 +73,23 @@ export class InsightsService {
       screenPerformance,
     });
 
-    // Call Claude
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 2048,
-      messages: [{ role: "user", content: prompt }],
-      system: `You are an expert mobile app observability analyst.
-Your job is to analyse crash reports, performance metrics, and usage data
-and generate clear, actionable insights for mobile developers.
-
-Always respond with a valid JSON array of insights.
-Each insight must have: title, description, severity, category, metadata.
-severity: critical | warning | info
-category: crash | performance | network | release | user_behaviour
-
-Be specific and data-driven. Reference actual numbers from the data.
-Prioritise insights that are actionable — things the developer can fix.
-Maximum 5 insights per response. Only include insights that are meaningful.
-If the data shows no issues, return an empty array.`,
+    // Create adapter from project's AI config
+    const adapter = aiService.createAdapter({
+      provider: project.aiConfig.provider as AIProvider,
+      model: project.aiConfig.model as AIModel,
+      apiKey: decryptedApiKey,
     });
 
-    // Parse response
-    const content = response.content[0];
-    if (content.type !== "text") return;
+    // Call AI provider
+    const response = await adapter.complete(system, [
+      { role: "user", content: message },
+    ]);
 
+    // Parse response
     let insights: InsightResult[] = [];
 
     try {
-      const cleaned = content.text
+      const cleaned = response.content
         .replace(/```json/g, "")
         .replace(/```/g, "")
         .trim();
@@ -85,15 +97,15 @@ If the data shows no issues, return an empty array.`,
       insights = JSON.parse(cleaned);
     } catch {
       console.error(
-        "[InsightsService] Failed to parse AI response:",
-        content.text,
+        `[InsightsService] Failed to parse AI response:`,
+        response.content,
       );
       return;
     }
 
     if (!Array.isArray(insights) || insights.length === 0) return;
 
-    // Store insights — delete old unread insights first to avoid stale data
+    // Delete old unread insights and store new ones
     await prisma.insight.deleteMany({
       where: { projectId, isRead: false },
     });
@@ -111,14 +123,17 @@ If the data shows no issues, return an empty array.`,
     });
 
     console.log(
-      `[InsightsService] Generated ${insights.length} insights for project ${projectId}`,
+      `[InsightsService] Generated ${insights.length} insights for project ${projectId} using ${project.aiConfig.provider}/${project.aiConfig.model}`,
     );
   }
 
+  // ─── Generate for all projects ───────────────────────────────────────
+
   async generateInsightsForAllProjects(): Promise<void> {
-    // Only generate insights for projects with sufficient data
+    // Only projects with an AI config and recent analytics data
     const projects = await prisma.project.findMany({
       where: {
+        aiConfig: { isNot: null },
         analyticsEvents: {
           some: {
             timestamp: {
@@ -133,11 +148,9 @@ If the data shows no issues, return an empty array.`,
       `[InsightsService] Generating insights for ${projects.length} projects`,
     );
 
-    // Process sequentially to avoid API rate limits
     for (const project of projects) {
       try {
         await this.generateInsightsForProject(project.id);
-        // Small delay between projects to respect rate limits
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (err) {
         console.error(
@@ -148,16 +161,17 @@ If the data shows no issues, return an empty array.`,
     }
   }
 
+  // ─── Get insights ────────────────────────────────────────────────────
+
   async getInsightsForProject(projectId: string) {
     return prisma.insight.findMany({
       where: { projectId },
-      orderBy: [
-        { severity: "asc" }, // critical first
-        { generatedAt: "desc" },
-      ],
+      orderBy: [{ severity: "asc" }, { generatedAt: "desc" }],
       take: 20,
     });
   }
+
+  // ─── Mark as read ────────────────────────────────────────────────────
 
   async markInsightRead(insightId: string, projectId: string) {
     return prisma.insight.updateMany({
@@ -166,9 +180,25 @@ If the data shows no issues, return an empty array.`,
     });
   }
 
-  // ─── Prompt Builder ─────────────────────────────────────────────────
+  // ─── Prompts ─────────────────────────────────────────────────────────
 
-  private buildPrompt(data: {
+  private buildSystemPrompt(): string {
+    return `You are an expert mobile app observability analyst.
+Your job is to analyse crash reports, performance metrics, and usage data
+and generate clear, actionable insights for mobile developers.
+
+Always respond with a valid JSON array of insights.
+Each insight must have: title, description, severity, category, metadata.
+severity: critical | warning | info
+category: crash | performance | network | release | user_behaviour
+
+Be specific and data-driven. Reference actual numbers from the data.
+Prioritise insights that are actionable — things the developer can fix.
+Maximum 5 insights per response. Only include insights that are meaningful.
+If the data shows no issues, return an empty array.`;
+  }
+
+  private buildUserPrompt(data: {
     projectName: string;
     crashRate: Awaited<ReturnType<typeof analyticsService.getCrashRate>>;
     topCrashes: Awaited<ReturnType<typeof analyticsService.getTopCrashGroups>>;

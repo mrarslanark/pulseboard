@@ -27,7 +27,6 @@ export const envSchema = {
     SMTP_FROM: { type: "string" },
     ALERT_ERROR_THRESHOLD: { type: "string", default: "10" },
     RETENTION_DAYS: { type: "string", default: "30" },
-    ANTHROPIC_API_KEY: { type: "string" },
     INSIGHTS_CRON: { type: "string", default: "0 */6 * * *" },
     AI_ENCRYPTION_KEY: { type: "string" },
   },
