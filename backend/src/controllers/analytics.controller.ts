@@ -1,16 +1,14 @@
-import { FastifyRequest, FastifyReply } from "fastify";
-import { analyticsService } from "../services/analytics.service";
-import { insightsService } from "../services/insights.service";
-import { insightsQueue } from "../lib/queues";
+import { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma";
+import { insightsQueue } from "../lib/queues";
 import {
-  InsightParams,
-  CrashBody,
-  SessionBody,
-  ScreenViewBody,
   ApiCallBody,
+  CrashBody,
   ProjectParams,
+  ScreenViewBody,
+  SessionBody,
 } from "../schemas/analytics";
+import { analyticsService } from "../services/analytics.service";
 
 class AnalyticsController {
   // ─── Ingest endpoints ───────────────────────────────────────────────
@@ -165,67 +163,6 @@ class AnalyticsController {
         screenPerformance,
       },
     });
-  }
-
-  async getInsights(request: FastifyRequest, reply: FastifyReply) {
-    const { projectId } = request.params as ProjectParams;
-    const { id: userId } = request.user;
-
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, userId },
-    });
-
-    if (!project) {
-      return reply
-        .status(404)
-        .send({ success: false, message: "Project not found" });
-    }
-
-    const insights = await insightsService.getInsightsForProject(projectId);
-
-    return reply.send({ success: true, data: insights });
-  }
-
-  async markInsightRead(request: FastifyRequest, reply: FastifyReply) {
-    const { projectId, insightId } = request.params as InsightParams;
-    const { id: userId } = request.user;
-
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, userId },
-    });
-
-    if (!project) {
-      return reply
-        .status(404)
-        .send({ success: false, message: "Project not found" });
-    }
-
-    await insightsService.markInsightRead(insightId, projectId);
-
-    return reply.send({ success: true });
-  }
-
-  async triggerInsights(request: FastifyRequest, reply: FastifyReply) {
-    const { projectId } = request.params as ProjectParams;
-    const { id: userId } = request.user;
-
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, userId },
-    });
-
-    if (!project) {
-      return reply
-        .status(404)
-        .send({ success: false, message: "Project not found" });
-    }
-
-    await insightsQueue.add(
-      "generate-project",
-      { projectId },
-      { jobId: `insights-${projectId}-manual`, removeOnComplete: true },
-    );
-
-    return reply.send({ success: true, message: "Insight generation queued" });
   }
 }
 
