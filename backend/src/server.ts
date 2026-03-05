@@ -3,9 +3,9 @@ import "dotenv/config";
 import app from "./app";
 
 // Routes
-import authRoutes from "./routes/auth";
-import ingestRoutes from "./routes/ingest";
-import projectRoutes from "./routes/projects";
+import authRoutes from "./routes/auth.route";
+import ingestRoutes from "./routes/ingest.route";
+import projectRoutes from "./routes/projects.route";
 import analyticsRoutes from "./routes/analytics.route";
 import insightsRoutes from "./routes/insights.route";
 import aiConfigRoutes from "./routes/ai-config.route";
