@@ -6,7 +6,9 @@ import app from "./app";
 import authRoutes from "./routes/auth";
 import ingestRoutes from "./routes/ingest";
 import projectRoutes from "./routes/projects";
-import analyticsRoutes from "./routes/analytics";
+import analyticsRoutes from "./routes/analytics.route";
+import insightsRoutes from "./routes/insights.route";
+import aiConfigRoutes from "./routes/ai-config.route";
 
 // Libraries
 import { connectRedis } from "./lib/redis";
@@ -30,6 +32,8 @@ app.register(authRoutes);
 app.register(projectRoutes);
 app.register(ingestRoutes);
 app.register(analyticsRoutes);
+app.register(insightsRoutes);
+app.register(aiConfigRoutes);
 
 const start = async () => {
   try {
