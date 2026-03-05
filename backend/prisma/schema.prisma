@@ -275,13 +275,15 @@ model DailyAggregate {
 }
 
 model AIConfig {
-  id         String   @id @default(cuid())
-  projectId  String   @unique
-  provider   String   // anthropic | openai | moonshot | google
-  model      String   // claude-sonnet-4-5 | gpt-4o | moonshot-v1-8k | gemini-1.5-pro
-  apiKey     String   // encrypted
-  keyHint    String   // last 4 characters of the original key e.g. "a1b2"
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  provider        String   
+  model           String   
+  apiKey          String   
+  keyHint         String   
+  cronSchedule    String   @default("0 9 * * *") 
+  lastTriggeredAt DateTime? 
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
